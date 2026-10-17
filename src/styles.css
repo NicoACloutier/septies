@@ -1,34 +1,295 @@
+/* The look of an old printed breviary: parchment, ink, red rubrics. Always light, like paper. */
+
 :root {
-  --bg: #fbf8f1;
-  --fg: #1d1a16;
-  --rubric: #b3261e;
-  --muted: #6b645a;
-  color-scheme: light dark;
+  --bg: #efe0bf;
+  --surface: rgba(120, 80, 30, 0.08);
+  --fg: #2b1d0e;
+  --rubric: #a3221a;
+  --muted: #6e5434;
+  --border: rgba(110, 75, 35, 0.4);
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #17150f;
-    --fg: #ece6da;
-    --rubric: #e57368;
-    --muted: #a39a8c;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  background: var(--bg);
   color: var(--fg);
-  font-family: Georgia, 'Times New Roman', serif;
-  line-height: 1.5;
+  font-family: 'Fondamento', 'EB Garamond', Georgia, serif;
+  /* Keep the source spelling (no u→v) if a fallback font has Latin localized forms. */
+  font-feature-settings: 'locl' 0;
+  font-size: 1.12rem;
+  line-height: 1.6;
+  /* Ink spreading slightly into the paper. */
+  text-shadow: 0 0 0.6px rgba(43, 29, 14, 0.45);
+  background-color: var(--bg);
+  background-image:
+    /* fine grain */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.24 0 0 0 0 0.1 0.45 0 0 0 -0.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
+    /* broad mottling and stains */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.38 0 0 0 0 0.15 0.7 0 0 0 -0.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
 }
 
-main {
+/* Darkened, foxed edges of the page. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    transparent 55%,
+    rgba(120, 72, 20, 0.22) 85%,
+    rgba(90, 50, 10, 0.4) 100%
+  );
+}
+
+header,
+#celebration,
+main,
+footer {
   max-width: 44rem;
   margin: 0 auto;
-  padding: 1rem;
+  padding: 0 16px;
 }
 
-.rubric {
+a {
   color: var(--rubric);
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.8rem;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+button.link {
+  border: none;
+  color: var(--rubric);
+  font-style: italic;
+  padding: 0;
+}
+
+/* Navigation */
+
+header {
+  padding-top: 1.2rem;
+}
+
+.date-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.date-row button {
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0.2rem 0.7rem 0.35rem;
+}
+
+.date-title {
+  margin: 0;
+  font-family: 'UnifrakturMaguntia', serif;
+  font-size: 1.7rem;
+  font-weight: 400;
+  text-align: center;
+  text-shadow: none;
+}
+
+.today-row {
+  min-height: 1.6rem;
+  text-align: center;
+}
+
+.hour-tabs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.6rem 0 0.4rem;
+}
+
+.hour-tabs button[aria-selected='true'] {
+  background: var(--rubric);
+  border-color: var(--rubric);
+  color: #f6ead0;
+}
+
+/* Celebration */
+
+.celebration,
+.hour-celebration {
+  margin: 1rem 0;
+}
+
+.hour-celebration {
+  margin-top: 0.4rem;
+}
+
+.celebration-title {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.rank {
+  color: var(--muted);
+}
+
+.celebration-note {
+  margin: 0;
+  font-size: 0.95rem;
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* Office: inside a red-ruled frame, as in printed breviaries. */
+
+.hour {
+  border: 3px double var(--rubric);
+  padding: 0.6rem 1.4rem 1rem;
+  margin-top: 1rem;
+}
+
+.hour-title {
+  margin: 0.4rem 0 0.2rem;
+  text-align: center;
+  font-family: 'UnifrakturMaguntia', serif;
+  font-weight: 400;
+  font-size: 2.3rem;
+  color: var(--rubric);
+}
+
+.hour-title::after {
+  content: '❦';
+  display: block;
+  font-family: 'EB Garamond', serif;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.part {
+  margin: 1.4rem 0;
+}
+
+.part-heading {
+  margin: 0 0 0.3rem;
+  font-size: 1.15rem;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: 0.02em;
+  color: var(--rubric);
+}
+
+.part-heading .note {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.part.omitted .part-heading {
+  color: var(--muted);
+}
+
+.line {
+  margin: 0.15rem 0;
+  overflow-wrap: break-word;
+}
+
+.line.verse {
+  padding-left: 2.6rem;
+  text-indent: -2.6rem;
+}
+
+.break {
+  height: 0.6rem;
+}
+
+/* Second half of a verse, after the mediant asterisk. */
+.second-half {
+  display: block;
+  padding-left: 1.5em;
+  text-indent: 0;
+}
+
+.label,
+.rubric,
+.initial,
+.mark,
+.cross {
+  color: var(--rubric);
+}
+
+.label {
+  font-style: italic;
+}
+
+.line.rubric {
+  font-style: italic;
+}
+
+.initial {
+  font-family: 'UnifrakturMaguntia', serif;
+  font-weight: 400;
+  font-size: 1.75em;
+  line-height: 0.8;
+  margin-right: 0.04em;
+}
+
+.verse-num {
+  display: inline-block;
+  min-width: 2.4rem;
+  color: var(--rubric);
+  font-size: 0.7rem;
+  font-style: italic;
+  text-indent: 0;
+}
+
+.mark {
+  font-size: 0.8em;
+}
+
+.small {
+  font-size: 0.8em;
+  color: var(--muted);
+}
+
+.italic {
+  font-style: italic;
+}
+
+.message {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--muted);
+  font-style: italic;
+}
+
+footer {
+  margin: 3rem auto 2rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .hour {
+    padding: 0.4rem 0.8rem 0.8rem;
+  }
 }

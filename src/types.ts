@@ -22,41 +22,77 @@ export const HOURS: HourId[] = [
   'completorium',
 ];
 
+export const HOUR_NAMES: Record<HourId, string> = {
+  matutinum: 'Matutinum',
+  laudes: 'Laudes',
+  prima: 'Prima',
+  tertia: 'Tertia',
+  sexta: 'Sexta',
+  nona: 'Nona',
+  vesperae: 'Vesperæ',
+  completorium: 'Completorium',
+};
+
 export type LiturgicalColor = 'white' | 'red' | 'green' | 'violet' | 'black' | 'rose';
 
-export interface Celebration {
-  name: string;
-  rank: string;
+/** The celebration line shown above an hour, e.g. "S. Teresiæ Virginis ~ III. classis". */
+export interface Headline {
+  title: string;
+  rank?: string;
   color: LiturgicalColor;
+  /** Secondary lines such as "Tempora: ..." or "Vespera de sequenti; ...". */
+  notes: string[];
 }
 
-export type OfficeItemType =
-  | 'rubric'
-  | 'versicle'
-  | 'antiphon'
-  | 'psalm'
-  | 'canticle'
-  | 'hymn'
-  | 'chapter'
-  | 'responsory'
-  | 'lesson'
-  | 'prayer';
+/**
+ * Inline styling of a run of text:
+ * rubric = red text, initial = red drop-capital, mark = small red sign (‡),
+ * cross = sign of the cross (✠), small = small black note, italic = italic text.
+ */
+export type RunStyle = 'rubric' | 'initial' | 'mark' | 'cross' | 'small' | 'italic';
 
-export interface OfficeItem {
-  type: OfficeItemType;
-  label?: string;
-  ref?: string;
+export interface Run {
   text: string;
-  /** GABC notation, or null when no chant is available. */
-  gabc: string | null;
-  /** Mode and termination, e.g. "8G". */
-  mode?: string;
+  style?: RunStyle;
+}
+
+/** break = blank line between stanzas or paragraphs. */
+export type LineKind = 'antiphon' | 'versicle' | 'response' | 'verse' | 'rubric' | 'text' | 'break';
+
+export interface Line {
+  kind: LineKind;
+  /** Red prefix pulled out of the line: "Ant.", "℣.", "℟.", or a verse number like "143:1". */
+  label?: string;
+  runs: Run[];
+}
+
+export interface Section {
+  heading?: string;
+  /** Source note next to the heading, e.g. "ex Proprio Sanctorum". */
+  note?: string;
+  /** True when the rubrics omit this part today (e.g. Preces Feriales). */
+  omitted?: boolean;
+  lines: Line[];
+}
+
+export interface Hour {
+  /** Heading as printed, e.g. "Ad Vesperas". */
+  title: string;
+  /** Celebration this hour belongs to; differs from the day's at first Vespers. */
+  headline: Headline;
+  sections: Section[];
 }
 
 export interface Day {
   date: string; // YYYY-MM-DD
   rubrics: '1960';
-  celebration: Celebration;
-  commemorations: Celebration[];
-  hours: Partial<Record<HourId, OfficeItem[]>>;
+  celebration: Headline;
+  hours: Partial<Record<HourId, Hour>>;
+}
+
+/** public/data/index.json: the range of dates that have been generated. */
+export interface DataIndex {
+  from: string;
+  to: string;
+  generated: string;
 }

@@ -1,0 +1,3 @@
+[submodule "pipeline/vendor/divinum-officium"]
+	path = pipeline/vendor/divinum-officium
+	url = https://github.com/DivinumOfficium/divinum-officium

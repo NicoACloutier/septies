@@ -10,6 +10,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "setup:perl": "tsx pipeline/setup-perl.ts",
     "generate": "tsx pipeline/generate-days.ts"
   },
   "devDependencies": {
