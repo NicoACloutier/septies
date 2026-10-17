@@ -3,6 +3,7 @@
 
 import { ensureRendered } from '../chant/render';
 import { Organ, type PhraseNote } from './organ';
+import { onSettingsChange, playbackSettings } from './settings';
 import { buildTimeline, type TimedNote } from './timeline';
 
 /**
@@ -22,6 +23,12 @@ const listeners = new Set<(state: PlayerState, current: HTMLElement | null) => v
 let current: HTMLElement | null = null;
 /** Set while waiting at a text section; calling it continues playback. */
 let continueAfterText: (() => void) | null = null;
+/** The chants of the run being played. */
+let queue: HTMLElement[] = [];
+/** The score on the audio clock: its notes (at the current tempo) and when note time 0 falls. */
+let position: { el: HTMLElement; notes: TimedNote[]; origin: number } | null = null;
+/** Tempo or pitch changed while paused: reschedule on resume. */
+let changedWhilePaused = false;
 
 function emit(): void {
   for (const l of listeners) l(state, current);
@@ -52,20 +59,32 @@ function follow(el: Element): void {
   if (r.top < h * 0.15 || r.bottom > h * 0.8) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
 
-/** Plays one rendered score; resolves when it has finished or playback was cancelled. */
-async function playScore(el: HTMLElement, token: number, runBus: GainNode): Promise<boolean> {
+/**
+ * Plays one rendered score, from note `from` on; resolves when it has finished or
+ * playback was cancelled.
+ */
+async function playScore(el: HTMLElement, token: number, runBus: GainNode, from = 0): Promise<boolean> {
   const rendered = await ensureRendered(el);
   if (!rendered || token !== run) return token === run;
-  const { notes } = buildTimeline(rendered.ex, rendered.score);
-  if (!notes.length) return true;
+  // Tempo and pitch are read now, so a change takes effect from here.
+  const { tempo, transpose } = playbackSettings();
+  const notes = buildTimeline(rendered.ex, rendered.score).notes.map((n) => ({
+    ...n,
+    time: n.time / tempo,
+    duration: n.duration / tempo,
+    midi: n.midi + transpose,
+  }));
+  if (from >= notes.length) return true;
 
   const o = organ!;
-  const start = o.ctx.currentTime + 0.15;
+  // Audio time of note time 0 (earlier than now when starting partway through).
+  const start = o.ctx.currentTime + 0.15 - notes[from].time;
+  position = { el, notes, origin: start };
   // The whole score goes to the audio clock at once, phrase by phrase, so it plays
   // to the end even in a background tab, where animation frames stop and timers
   // are throttled.
   let phrase: PhraseNote[] = [];
-  for (const n of notes) {
+  for (const n of notes.slice(from)) {
     phrase.push({ midi: n.midi, start: start + n.time, duration: n.duration, level: n.level });
     if (n.phraseEnd) {
       o.phrase(runBus, phrase);
@@ -79,7 +98,7 @@ async function playScore(el: HTMLElement, token: number, runBus: GainNode): Prom
 
   // Highlight the sounding note on animation frames (only needed while visible).
   // Elements are looked up each time, since a re-layout (resize) replaces the SVG.
-  let shown = -1;
+  let shown = from - 1;
   let shownNotation = -1;
   const frame = () => {
     if (token !== run || current !== el) return;
@@ -97,9 +116,12 @@ async function playScore(el: HTMLElement, token: number, runBus: GainNode): Prom
 
   const last = notes[notes.length - 1];
   await waitUntil(start + last.time + last.duration, token);
+  // A cancelled run leaves the element alone: a restart may already be playing it.
+  if (token !== run) return false;
+  position = null;
   el.classList.remove('playing');
   for (const s of el.querySelectorAll('.sounding')) s.classList.remove('sounding');
-  return token === run;
+  return true;
 }
 
 function highlight(el: HTMLElement, note: TimedNote, previousNotation: number): void {
@@ -133,11 +155,12 @@ function waitUntil(time: number, token: number): Promise<void> {
 }
 
 /**
- * Plays the given chant and every chant after it in the hour. Whatever was playing
- * is stopped first, so only one chant ever sounds.
+ * Plays the given chant (from note `from`) and every chant after it in the hour.
+ * Whatever was playing is stopped first, so only one chant ever sounds.
  */
-export async function playFrom(scores: HTMLElement[], index: number): Promise<void> {
+export async function playFrom(scores: HTMLElement[], index: number, from = 0): Promise<void> {
   stop();
+  queue = scores;
   // Claim this run and its bus before any await, so a second click that arrives
   // meanwhile cancels this one (and fades its bus) instead of overlapping it.
   const token = ++run;
@@ -150,7 +173,7 @@ export async function playFrom(scores: HTMLElement[], index: number): Promise<vo
   await organ.ctx.resume();
   if (token !== run) return;
   for (let i = index; i < scores.length; i++) {
-    if (!(await playScore(scores[i], token, runBus))) return;
+    if (!(await playScore(scores[i], token, runBus, i === index ? from : 0))) return;
     const next = scores[i + 1];
     if (!next) break;
     if (next.dataset.afterText) await waitForReader(next);
@@ -197,6 +220,7 @@ export function resume(): void {
     return;
   }
   if (state !== 'paused') return;
+  if (changedWhilePaused) return restartHere();
   void organ.ctx.resume();
   state = 'playing';
   emit();
@@ -216,8 +240,28 @@ export function stop(): void {
   continueAfterText?.(); // release a wait at a text section; its run is cancelled
   clearHighlight();
   current = null;
+  position = null;
+  changedWhilePaused = false;
   if (state !== 'stopped') {
     state = 'stopped';
     emit();
   }
 }
+
+/** Reschedules the sounding chant from its current note, with the new tempo and pitch. */
+function restartHere(): void {
+  if (!organ || !position) return;
+  const { el, notes, origin } = position;
+  const now = organ.ctx.currentTime - origin;
+  let note = 0;
+  while (note + 1 < notes.length && notes[note + 1].time <= now) note++;
+  const index = queue.indexOf(el);
+  if (index >= 0) void playFrom(queue, index, note);
+}
+
+// A chant already on the audio clock is rescheduled; between chants, or while
+// waiting at text, the next chant simply picks up the new settings.
+onSettingsChange(() => {
+  if (state === 'playing') restartHere();
+  else if (state === 'paused' && position) changedWhilePaused = true;
+});

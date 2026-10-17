@@ -309,6 +309,62 @@ header {
   align-items: center;
 }
 
+.transport-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Marks that tempo or pitch differ from the usual. */
+#transport button.changed {
+  color: var(--rubric);
+  border-color: var(--rubric);
+}
+
+.transport-settings {
+  /* Centred over the bar, which is itself centred, so it stays on screen on phones. */
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 8px);
+  width: min(20rem, calc(100vw - 32px));
+  display: grid;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(60, 35, 10, 0.25);
+}
+
+.transport-settings[hidden] {
+  display: none;
+}
+
+.transport-settings .link {
+  justify-self: end;
+  font-size: 0.9rem;
+}
+
+.setting {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+
+.setting input {
+  width: 100%;
+  accent-color: var(--rubric);
+}
+
+.setting output {
+  grid-column: 2;
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
 .transport-hint {
   padding: 0 0.4rem;
   font-style: italic;

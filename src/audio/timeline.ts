@@ -26,17 +26,17 @@ export interface Timeline {
 }
 
 /** Seconds per plain note (punctum); the basic pulse of the chant. */
-export const PULSE = 0.42;
+export const PULSE = 0.56;
 
 // Breaths at the divisions, in seconds.
-const BREATH = { quarter: 0.25, half: 0.5, full: 0.9, double: 1.3 };
+const BREATH = { quarter: 0.33, half: 0.67, full: 1.2, double: 1.73 };
 
 // Stops after punctuation in the text, in seconds. Where a bar falls at the same
 // place (the usual case), the longer of the two is taken, not their sum.
 const PUNCTUATION: [RegExp, number][] = [
-  [/[.?!]$/, 0.7],
-  [/[:;]$/, 0.4],
-  [/,$/, 0.2],
+  [/[.?!]$/, 0.93],
+  [/[:;]$/, 0.53],
+  [/,$/, 0.27],
 ];
 
 /** Stressed syllables are held this much longer than the pulse. */

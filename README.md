@@ -5,7 +5,7 @@ Gregorian chant notation and organ playback, served as a static site on GitHub P
 
 - Texts and rubrics: [Divinum Officium](https://github.com/DivinumOfficium/divinum-officium)
 - Chant: [GregoBase](https://gregobase.selapa.net) (GABC), rendered with [Exsurge](https://github.com/frmatthew/exsurge)
-- Playback: a small organ synthesizer on the Web Audio API, with the sounding note and syllable highlighted
+- Playback: a small organ synthesizer on the Web Audio API, with the sounding note and syllable highlighted; tempo and pitch are adjustable from the playback bar (♩)
 
 ## Development
 
