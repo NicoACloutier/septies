@@ -56,14 +56,24 @@ export interface Run {
   style?: RunStyle;
 }
 
-/** break = blank line between stanzas or paragraphs. */
-export type LineKind = 'antiphon' | 'versicle' | 'response' | 'verse' | 'rubric' | 'text' | 'break';
+/** break = blank line between stanzas or paragraphs; chant = a GABC score. */
+export type LineKind = 'antiphon' | 'versicle' | 'response' | 'verse' | 'rubric' | 'text' | 'break' | 'chant';
+
+/** A chant score in GABC, as shipped by Divinum Officium (mostly from GregoBase). */
+export interface Chant {
+  /** GABC notation body, without the header. */
+  gabc: string;
+  /** GABC header fields, e.g. name, mode, annotation ("8.G"), book, transcriber, initial-style. */
+  header: Record<string, string>;
+}
 
 export interface Line {
   kind: LineKind;
   /** Red prefix pulled out of the line: "Ant.", "℣.", "℟.", or a verse number like "143:1". */
   label?: string;
   runs: Run[];
+  /** Only on chant lines. */
+  chant?: Chant;
 }
 
 export interface Section {
@@ -80,7 +90,10 @@ export interface Hour {
   title: string;
   /** Celebration this hour belongs to; differs from the day's at first Vespers. */
   headline: Headline;
+  /** The hour as text. */
   sections: Section[];
+  /** The hour as sung: chant scores where DO has them, text elsewhere. */
+  cantus?: Section[];
 }
 
 export interface Day {

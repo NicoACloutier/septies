@@ -4,7 +4,7 @@
 // The markup is a small, stable set: one <TD> per section, <br/> between lines,
 // and <FONT>/<I>/<B>/<SPAN> for red rubrics, drop-capitals and small notes.
 
-import type { Headline, Hour, Line, LiturgicalColor, Run, RunStyle, Section } from '../src/types';
+import type { Chant, Headline, Hour, Line, LiturgicalColor, Run, RunStyle, Section } from '../src/types';
 
 /** Run style before the heading/initial ambiguity is resolved. */
 type RawStyle = RunStyle | 'big';
@@ -155,8 +155,41 @@ function classify(raw: RawRun[]): Line {
   return { kind: 'text', runs };
 }
 
+/** Splits a GABC source into header fields and notation body. */
+function parseGabc(source: string): Chant {
+  const split = source.indexOf('%%');
+  const header: Record<string, string> = {};
+  if (split < 0) return { gabc: source.trim(), header };
+  for (const m of source.slice(0, split).matchAll(/^\s*([\w-]+)\s*:\s*(.*?)\s*;?\s*$/gm)) {
+    if (m[2]) header[m[1]] = m[2];
+  }
+  return { gabc: source.slice(split + 2).trim(), header };
+}
+
+// Placeholder left in the text where a GABC block was lifted out.
+const CHANT_MARK = '\u0001';
+const CHANT_PLACEHOLDER = /^\u0001(\d+)\u0001$/;
+// Labels that introduce a chant ("Ant." + score) and belong to it.
+const CHANT_LABEL = /^(Ant\.|℣\.|℟\.|℟\.br\.|R\.br\.|Benedictio\.)$/;
+
+/**
+ * Lifts DO's chant blocks (<DIV class="GABC">source</DIV><DIV class="GCHANT"></DIV>)
+ * out of a cell, leaving a placeholder on a line of its own.
+ */
+function extractChants(html: string): { html: string; chants: Chant[] } {
+  const chants: Chant[] = [];
+  const out = html.replace(
+    /<DIV ID="GABC[^"]*" class="GABC">([\s\S]*?)<\/DIV>(?:\s*<DIV ID="GCHANT[^"]*"[^>]*><\/DIV>)?/gi,
+    (_, source: string) => {
+      chants.push(parseGabc(decodeEntities(source)));
+      return `<br/>${CHANT_MARK}${chants.length - 1}${CHANT_MARK}<br/>`;
+    },
+  );
+  return { html: out, chants };
+}
+
 function parseSection(cellHtml: string): Section {
-  const html = cellHtml.replace(/<DIV ALIGN='right'>[\s\S]*?<\/DIV>/i, '');
+  const { html, chants } = extractChants(cellHtml.replace(/<DIV ALIGN='right'>[\s\S]*?<\/DIV>/i, ''));
   const raw = toRawLines(html).map((l) => tidy(l));
 
   // A cell holding only "Name{omittitur}" marks a part left out today.
@@ -182,9 +215,23 @@ function parseSection(cellHtml: string): Section {
   }
 
   for (const l of raw) {
-    const line = classify(l);
+    const placeholder = l.length === 1 ? CHANT_PLACEHOLDER.exec(l[0].text.trim()) : null;
     const prev = section.lines[section.lines.length - 1];
-    if (line.kind === 'break' && (!prev || prev.kind === 'break')) continue;
+    if (placeholder) {
+      const line: Line = { kind: 'chant', runs: [], chant: chants[Number(placeholder[1])] };
+      // A lone red label just before the score ("Ant.") is the score's label.
+      const prevText = prev?.runs.map((r) => r.text).join('').trim() ?? '';
+      if (prev?.kind === 'rubric' && CHANT_LABEL.test(prevText)) {
+        line.label = prevText;
+        section.lines.pop();
+      }
+      while (section.lines[section.lines.length - 1]?.kind === 'break') section.lines.pop();
+      section.lines.push(line);
+      continue;
+    }
+    const line = classify(l);
+    // No blank lines around scores: they are already set off by the staff.
+    if (line.kind === 'break' && (!prev || prev.kind === 'break' || prev.kind === 'chant')) continue;
     section.lines.push(line);
   }
   while (section.lines[section.lines.length - 1]?.kind === 'break') section.lines.pop();

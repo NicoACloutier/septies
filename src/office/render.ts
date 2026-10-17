@@ -1,6 +1,7 @@
-// Renders one hour of the office from day JSON: rubrics in red, Latin text,
-// and the celebration line with its liturgical color.
+// Renders one hour of the office from day JSON: rubrics in red, Latin text or
+// chant scores, and the celebration line.
 
+import { chantElement } from '../chant/render';
 import type { Headline, Hour, Line, Run, Section } from '../types';
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, text?: string) {
@@ -33,8 +34,16 @@ function splitAtMediant(runs: Run[]): [Run[], Run[]] | null {
   ];
 }
 
+function renderChant(line: Line): HTMLElement {
+  const wrap = el('div', 'line chant');
+  if (line.label) wrap.append(el('span', 'label', line.label));
+  wrap.append(chantElement(line.chant!));
+  return wrap;
+}
+
 function renderLine(line: Line): HTMLElement {
   if (line.kind === 'break') return el('div', 'break');
+  if (line.kind === 'chant') return renderChant(line);
   const p = el('p', `line ${line.kind}`);
   if (line.label) p.append(el('span', line.kind === 'verse' ? 'verse-num' : 'label', line.label), ' ');
   // In antiphons the asterisk only marks the end of the intonation, so keep them on one line.
@@ -70,13 +79,17 @@ export function renderHeadline(headline: Headline, className = 'celebration'): H
   return c;
 }
 
-export function renderHour(container: HTMLElement, hour: Hour, dayCelebration: Headline): void {
+/** textus = the hour as text; cantus = chant scores where available, text elsewhere. */
+export type View = 'textus' | 'cantus';
+
+export function renderHour(container: HTMLElement, hour: Hour, dayCelebration: Headline, view: View): void {
   const article = el('article', 'hour');
   // Show the hour's own celebration only when it differs (e.g. first Vespers of tomorrow).
   if (hour.headline.title !== dayCelebration.title) {
     article.append(renderHeadline(hour.headline, 'hour-celebration'));
   }
-  article.append(el('h2', 'hour-title', hour.title), ...hour.sections.map(renderSection));
+  const sections = view === 'cantus' && hour.cantus ? hour.cantus : hour.sections;
+  article.append(el('h2', 'hour-title', hour.title), ...sections.map(renderSection));
   container.replaceChildren(article);
 }
 

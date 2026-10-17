@@ -36,11 +36,13 @@ async function buildDay(date: string): Promise<Day> {
   // belong to the following day.
   const [laudes, ...hours] = await Promise.all([
     runHour(date, 'Laudes'),
-    ...HOURS.map(([, doHour]) => runHour(date, doHour)),
+    ...HOURS.flatMap(([, doHour]) => [runHour(date, doHour), runHour(date, doHour, true)]),
   ]);
   const day: Day = { date, rubrics: '1960', celebration: parseHeadline(laudes), hours: {} };
   HOURS.forEach(([id], i) => {
-    day.hours[id] = parseHour(hours[i]);
+    const hour = parseHour(hours[2 * i]);
+    hour.cantus = parseHour(hours[2 * i + 1]).sections;
+    day.hours[id] = hour;
   });
   return day;
 }
@@ -78,8 +80,9 @@ async function main(): Promise<void> {
       process.stdout.write(`\r${done}/${dates.length} ${date}`);
     }
   };
-  // Each day already runs its hours in parallel, so divide the job budget.
-  await Promise.all(Array.from({ length: Math.max(1, Math.floor(jobs / (HOURS.length + 1))) }, worker));
+  // Each day already runs Lauds plus a text and a chant run per hour in parallel, so divide the job budget.
+  const perDay = 2 * HOURS.length + 1;
+  await Promise.all(Array.from({ length: Math.max(1, Math.floor(jobs / perDay)) }, worker));
   process.stdout.write('\n');
 
   const index: DataIndex = { from, to: dates[dates.length - 1], generated: new Date().toISOString() };

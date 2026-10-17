@@ -30,7 +30,12 @@ function doDate(iso: string): string {
   return `${m}-${d}-${y}`;
 }
 
-export function runHour(isoDate: string, hour: DoHour): Promise<string> {
+/**
+ * With `chant`, DO's "Latin-gabc" language is used: chanted parts come out as
+ * GABC blocks (<DIV class="GABC">) and the rest as ordinary Latin text.
+ */
+export function runHour(isoDate: string, hour: DoHour, chant = false): Promise<string> {
+  const lang = chant ? 'Latin-gabc' : 'Latin';
   if (!existsSync(join(HORAS_DIR, 'officium.pl'))) {
     throw new Error(`Divinum Officium not found at ${DO_ROOT}. Run: git submodule update --init`);
   }
@@ -40,7 +45,8 @@ export function runHour(isoDate: string, hour: DoHour): Promise<string> {
     `version=${VERSION}`,
     `command=pray${hour}`,
     `date=${doDate(isoDate)}`,
-    'lang2=Latin',
+    `lang1=${lang}`,
+    `lang2=${lang}`,
     'content=1',
   ];
   return new Promise((resolve, reject) => {

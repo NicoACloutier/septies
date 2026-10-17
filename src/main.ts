@@ -6,8 +6,28 @@ import './styles.css';
 import { loadDay, loadIndex } from './app/data';
 import { addDays, isIsoDate, todayIso } from './app/date';
 import { renderNav, type NavState } from './app/nav';
-import { renderHeadline, renderHour, renderMessage } from './office/render';
+import { renderHeadline, renderHour, renderMessage, type View } from './office/render';
 import { HOURS, type HourId } from './types';
+
+/** The text/chant choice is a per-viewer preference, remembered when storage allows. */
+const VIEW_KEY = 'septies-view';
+let view: View = (() => {
+  try {
+    return localStorage.getItem(VIEW_KEY) === 'cantus' ? 'cantus' : 'textus';
+  } catch {
+    return 'cantus';
+  }
+})();
+
+function setView(next: View): void {
+  view = next;
+  try {
+    localStorage.setItem(VIEW_KEY, next);
+  } catch {
+    // Storage unavailable: the choice lasts for this visit only.
+  }
+  void render();
+}
 
 const nav = document.getElementById('nav')!;
 const celebration = document.getElementById('celebration')!;
@@ -40,7 +60,7 @@ async function render(): Promise<void> {
   const id = ++renderId;
   const state = readState();
   const index = await indexPromise;
-  renderNav(nav, { state, index, hours: AVAILABLE, onChange: writeState });
+  renderNav(nav, { state, index, hours: AVAILABLE, onChange: writeState, view, onViewChange: setView });
 
   const day = await loadDay(state.date);
   if (id !== renderId) return; // a newer navigation started meanwhile
@@ -52,7 +72,7 @@ async function render(): Promise<void> {
   }
   celebration.replaceChildren(renderHeadline(day.celebration));
   const hour = day.hours[state.hour];
-  if (hour) renderHour(office, hour, day.celebration);
+  if (hour) renderHour(office, hour, day.celebration, view);
   else renderMessage(office, 'This hour is not available for this day.');
 
   // Warm the cache for the neighbouring days.

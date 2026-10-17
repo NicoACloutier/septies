@@ -8,3 +8,10 @@ dist/
 
 # Large third-party data, fetched locally / in CI
 pipeline/vendor/gregobase/
+
+# Perl modules installed by `npm run setup:perl`
+pipeline/.perl5/
+
+# Generated office data (built in CI by `npm run generate`)
+public/data/*
+!public/data/.gitkeep
