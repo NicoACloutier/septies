@@ -1,0 +1,10 @@
+# Local planning notes
+plan.txt
+
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Large third-party data, fetched locally / in CI
+pipeline/vendor/gregobase/

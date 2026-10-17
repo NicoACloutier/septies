@@ -1,0 +1,34 @@
+:root {
+  --bg: #fbf8f1;
+  --fg: #1d1a16;
+  --rubric: #b3261e;
+  --muted: #6b645a;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #17150f;
+    --fg: #ece6da;
+    --rubric: #e57368;
+    --muted: #a39a8c;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Georgia, 'Times New Roman', serif;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.rubric {
+  color: var(--rubric);
+}
