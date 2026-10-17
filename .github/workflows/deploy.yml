@@ -1,0 +1,50 @@
+name: Deploy to GitHub Pages
+
+# Generates office data with Divinum Officium, builds the site and deploys it.
+# The weekly run keeps the rolling window of generated days moving forward.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install Perl modules for Divinum Officium
+        run: sudo apt-get update && sudo apt-get install -y libcgi-pm-perl
+      - run: npm ci
+      # From a week ago through roughly a year ahead.
+      - run: npm run generate -- --from "$(date -u -d '7 days ago' +%F)" --days 400 --jobs 8
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
