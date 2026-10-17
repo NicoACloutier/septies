@@ -13,7 +13,7 @@ import { HOURS, type HourId } from './types';
 const VIEW_KEY = 'septies-view';
 let view: View = (() => {
   try {
-    return localStorage.getItem(VIEW_KEY) === 'cantus' ? 'cantus' : 'textus';
+    return localStorage.getItem(VIEW_KEY) === 'textus' ? 'textus' : 'cantus';
   } catch {
     return 'cantus';
   }
