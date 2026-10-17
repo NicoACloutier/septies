@@ -6,6 +6,8 @@ import './styles.css';
 import { loadDay, loadIndex } from './app/data';
 import { addDays, isIsoDate, todayIso } from './app/date';
 import { renderNav, type NavState } from './app/nav';
+import { initTransport } from './app/transport';
+import { stop } from './audio/player';
 import { renderHeadline, renderHour, renderMessage, type View } from './office/render';
 import { HOURS, type HourId } from './types';
 
@@ -32,6 +34,8 @@ function setView(next: View): void {
 const nav = document.getElementById('nav')!;
 const celebration = document.getElementById('celebration')!;
 const office = document.getElementById('office')!;
+const transport = document.getElementById('transport')!;
+initTransport(transport, () => [...office.querySelectorAll<HTMLElement>('.chant-score')]);
 
 /** Hours present in the generated data (phase 1: Vespers and Compline). */
 const AVAILABLE: HourId[] = ['vesperae', 'completorium'];
@@ -58,6 +62,7 @@ let renderId = 0;
 
 async function render(): Promise<void> {
   const id = ++renderId;
+  stop(); // a different day, hour or view: the chant being played is gone
   const state = readState();
   const index = await indexPromise;
   renderNav(nav, { state, index, hours: AVAILABLE, onChange: writeState, view, onViewChange: setView });
@@ -74,6 +79,7 @@ async function render(): Promise<void> {
   const hour = day.hours[state.hour];
   if (hour) renderHour(office, hour, day.celebration, view);
   else renderMessage(office, 'This hour is not available for this day.');
+  transport.hidden = !office.querySelector('.chant-score');
 
   // Warm the cache for the neighbouring days.
   void loadDay(addDays(state.date, -1));

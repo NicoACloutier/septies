@@ -1,6 +1,7 @@
 // Renders one hour of the office from day JSON: rubrics in red, Latin text or
 // chant scores, and the celebration line.
 
+import { currentScore, onPlayerChange, pause, playerState, playFrom, resume } from '../audio/player';
 import { chantElement } from '../chant/render';
 import type { Headline, Hour, Line, Run, Section } from '../types';
 
@@ -34,10 +35,40 @@ function splitAtMediant(runs: Run[]): [Run[], Run[]] | null {
   ];
 }
 
+function setPlayButton(button: HTMLElement, current: boolean, playing: boolean): void {
+  const label = playing ? 'Intermitte' : current ? 'Perge' : 'Cane hinc';
+  button.textContent = playing ? '❚❚' : '▶';
+  button.title = label;
+  button.setAttribute('aria-label', label);
+  button.classList.toggle('active', current);
+}
+
+// Each chant's button shows ❚❚ while that chant sounds and ▶ otherwise.
+onPlayerChange((state, current) => {
+  for (const button of document.querySelectorAll<HTMLElement>('.chant-play')) {
+    const isCurrent = !!current && button.closest('.line.chant')?.querySelector('.chant-score') === current;
+    setPlayButton(button, isCurrent && state !== 'stopped', isCurrent && state === 'playing');
+  }
+});
+
 function renderChant(line: Line): HTMLElement {
   const wrap = el('div', 'line chant');
-  if (line.label) wrap.append(el('span', 'label', line.label));
-  wrap.append(chantElement(line.chant!));
+  const head = el('div', 'chant-head');
+  const score = chantElement(line.chant!);
+  const play = el('button', 'chant-play');
+  play.type = 'button';
+  setPlayButton(play, false, false);
+  play.addEventListener('click', () => {
+    if (currentScore() === score && playerState() === 'playing') return pause();
+    // Paused here, or waiting at the text before this chant: carry on from here.
+    if (currentScore() === score && (playerState() === 'paused' || playerState() === 'waiting')) return resume();
+    // Play this chant and the rest of the hour after it (stopping anything else).
+    const scores = [...(wrap.closest('article')?.querySelectorAll<HTMLElement>('.chant-score') ?? [])];
+    void playFrom(scores, scores.indexOf(score));
+  });
+  head.append(play);
+  if (line.label) head.append(el('span', 'label', line.label));
+  wrap.append(head, score);
   return wrap;
 }
 
@@ -79,6 +110,29 @@ export function renderHeadline(headline: Headline, className = 'celebration'): H
   return c;
 }
 
+// Lines that are prayed (read aloud) rather than rubrics, headings or spacing.
+const READABLE = new Set(['text', 'antiphon', 'verse', 'versicle', 'response']);
+
+/**
+ * Marks each chant that has text to be read before it (since the previous chant),
+ * so playback stops there for reading, and marks where that text starts.
+ */
+function markTextBeforeChants(article: HTMLElement): void {
+  let firstText: HTMLElement | null = null;
+  for (const line of article.querySelectorAll<HTMLElement>('.line')) {
+    if (line.classList.contains('chant')) {
+      const score = line.querySelector<HTMLElement>('.chant-score');
+      if (score && firstText) {
+        score.dataset.afterText = '1';
+        firstText.classList.add('read-start');
+      }
+      firstText = null;
+    } else if (!firstText && [...line.classList].some((c) => READABLE.has(c))) {
+      firstText = line;
+    }
+  }
+}
+
 /** textus = the hour as text; cantus = chant scores where available, text elsewhere. */
 export type View = 'textus' | 'cantus';
 
@@ -90,6 +144,7 @@ export function renderHour(container: HTMLElement, hour: Hour, dayCelebration: H
   }
   const sections = view === 'cantus' && hour.cantus ? hour.cantus : hour.sections;
   article.append(el('h2', 'hour-title', hour.title), ...sections.map(renderSection));
+  markTextBeforeChants(article);
   container.replaceChildren(article);
 }
 

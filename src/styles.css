@@ -247,9 +247,83 @@ header {
   margin: 0.5rem 0;
 }
 
-.line.chant > .label {
-  display: block;
+.chant-head {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 1.4rem;
+}
+
+.chant-head .label {
   font-size: 0.9rem;
+}
+
+.chant-play {
+  font-size: 0.65rem;
+  line-height: 1;
+  min-width: 1.9rem;
+  padding: 0.25rem 0.4rem;
+  color: var(--rubric);
+  border-color: var(--border);
+}
+
+.chant-play.active {
+  background: var(--rubric);
+  border-color: var(--rubric);
+  color: #f6ead0;
+}
+
+/* Playback highlighting: the sounding note and its syllable turn red. */
+.chant-score [data-k].sounding {
+  fill: var(--rubric);
+}
+
+.chant-score [data-n].sounding text {
+  fill: var(--rubric);
+}
+
+#transport {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.35rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(60, 35, 10, 0.25);
+  z-index: 10;
+}
+
+#transport[hidden] {
+  display: none;
+}
+
+#transport button {
+  white-space: nowrap;
+}
+
+#transport {
+  align-items: center;
+}
+
+.transport-hint {
+  padding: 0 0.4rem;
+  font-style: italic;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* Where playback stopped for reading: room above it when scrolled to. */
+.read-start {
+  scroll-margin-top: 1.5rem;
+}
+
+/* Room for the transport bar at the end of the page. */
+footer {
+  padding-bottom: 4rem;
 }
 
 .chant-score {

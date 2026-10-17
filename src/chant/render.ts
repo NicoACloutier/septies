@@ -3,6 +3,7 @@
 // loaded on first use, and each score is laid out only when it nears the screen.
 
 import exsurgeUrl from '../../pipeline/vendor/divinum-officium/web/www/js/exsurge.js?url';
+import { tagScore } from '../audio/timeline';
 import type { Chant } from '../types';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- Exsurge ships no types. */
@@ -110,6 +111,7 @@ async function renderScore(el: HTMLElement, chant: Chant): Promise<void> {
   const score = new ex.ChantScore(ctxt, mappings, useDropCap);
   if (useDropCap && chant.header.annotation) score.annotation = new ex.Annotation(ctxt, chant.header.annotation);
   await new Promise<void>((resolve) => score.performLayoutAsync(ctxt, () => resolve()));
+  tagScore(score); // data-n / data-k on notations and notes, for playback highlighting
   const entry: Rendered = { score, ctxt, width: el.clientWidth };
   rendered.set(el, entry);
   await layout(entry, el, entry.width);
@@ -119,9 +121,10 @@ async function renderScore(el: HTMLElement, chant: Chant): Promise<void> {
 // Scores are rendered one at a time: many concurrent Exsurge layouts stall each
 // other (seen with ~25 scores in view at once), and serial work keeps scrolling smooth.
 let queue: Promise<void> = Promise.resolve();
+const pending = new WeakMap<HTMLElement, Promise<void>>();
 
-function enqueue(el: HTMLElement, chant: Chant): void {
-  queue = queue.then(async () => {
+function enqueue(el: HTMLElement, chant: Chant): Promise<void> {
+  const job = queue.then(async () => {
     if (!el.isConnected) return; // navigated away before its turn
     try {
       await renderScore(el, chant);
@@ -131,6 +134,22 @@ function enqueue(el: HTMLElement, chant: Chant): void {
       console.error(err);
     }
   });
+  queue = job;
+  pending.set(el, job);
+  return job;
+}
+
+/** The rendered score for a chant element, rendering it now if it hasn't been yet. */
+export async function ensureRendered(el: HTMLElement): Promise<{ ex: Exsurge; score: Score } | null> {
+  if (!rendered.has(el) && !pending.has(el)) {
+    const chant = sources.get(el);
+    if (!chant) return null;
+    observer.unobserve(el);
+    enqueue(el, chant);
+  }
+  await pending.get(el);
+  const entry = rendered.get(el);
+  return entry ? { ex: await loadExsurge(), score: entry.score } : null;
 }
 
 const observer = new IntersectionObserver(
