@@ -1,9 +1,9 @@
 // Loads the generated JSON in public/data. Paths are relative so the site
 // works under a GitHub Pages project path.
 
-import type { DataIndex, Day } from '../types';
+import type { DataIndex, HourFile, HourId } from '../types';
 
-const days = new Map<string, Promise<Day | null>>();
+const cache = new Map<string, Promise<HourFile | null>>();
 
 export async function loadIndex(): Promise<DataIndex | null> {
   try {
@@ -14,15 +14,16 @@ export async function loadIndex(): Promise<DataIndex | null> {
   }
 }
 
-/** Resolves to null when the day hasn't been generated. */
-export function loadDay(date: string): Promise<Day | null> {
-  let day = days.get(date);
-  if (!day) {
+/** One hour of one day; resolves to null when it hasn't been generated. */
+export function loadHour(date: string, hour: HourId): Promise<HourFile | null> {
+  const key = `${date}/${hour}`;
+  let file = cache.get(key);
+  if (!file) {
     const [y, m, d] = date.split('-');
-    day = fetch(`data/${y}/${m}-${d}.json`)
-      .then((res) => (res.ok ? (res.json() as Promise<Day>) : null))
+    file = fetch(`data/${y}/${m}-${d}/${hour}.json`)
+      .then((res) => (res.ok ? (res.json() as Promise<HourFile>) : null))
       .catch(() => null);
-    days.set(date, day);
+    cache.set(key, file);
   }
-  return day;
+  return file;
 }

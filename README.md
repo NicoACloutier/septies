@@ -2,6 +2,8 @@
 
 The Divine Office according to the 1960 *Breviarium Romanum*, in Latin with
 Gregorian chant notation and organ playback, served as a static site on GitHub Pages.
+All eight hours, Matins through Compline, for each day; the hour for the time of
+day opens by default.
 
 - Texts and rubrics: [Divinum Officium](https://github.com/DivinumOfficium/divinum-officium)
 - Chant: [GregoBase](https://gregobase.selapa.net) (GABC), rendered with [Exsurge](https://github.com/frmatthew/exsurge)
@@ -26,9 +28,14 @@ npm run build                 # typecheck + production build to dist/
 
 `pipeline/generate-days.ts` runs Divinum Officium's `officium.pl` (1960 rubrics,
 Latin only, content-only output) for each day and hour, and `pipeline/parse-do.ts`
-turns its HTML into the JSON model in `src/types.ts`. Each hour is generated twice:
+turns its HTML into the JSON model in `src/types.ts`, one file per hour
+(`public/data/YYYY/MM-DD/<hour>.json`), so a page loads only the hour it shows.
+Each hour is generated twice:
 once as text, and once with DO's `Latin-gabc` language, which yields GABC chant
 (antiphons, psalms pointed to their tones, hymns, versicles) wherever DO has it.
+Where it has none (at Matins: the psalms, lessons and responsories; in the
+Triduum, the Little Hours), the text is shown and playback stops there so it can
+be read before continuing.
 The page renders the chant with the Exsurge build that ships with DO, loaded only
 when the *Cantus* view is chosen. The generated files are not
 committed; the deploy workflow regenerates about a year of days on every push and weekly.

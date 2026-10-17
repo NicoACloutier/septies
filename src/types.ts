@@ -1,5 +1,6 @@
-// Shape of the per-day JSON files in public/data/YYYY/MM-DD.json,
-// produced by pipeline/generate-days.ts.
+// Shape of the generated JSON in public/data/YYYY/MM-DD/<hour>.json (one file
+// per hour, so a page loads only the hour it shows), produced by
+// pipeline/generate-days.ts.
 
 export type HourId =
   | 'matutinum'
@@ -56,8 +57,20 @@ export interface Run {
   style?: RunStyle;
 }
 
-/** break = blank line between stanzas or paragraphs; chant = a GABC score. */
-export type LineKind = 'antiphon' | 'versicle' | 'response' | 'verse' | 'rubric' | 'text' | 'break' | 'chant';
+/**
+ * break = blank line between stanzas or paragraphs; chant = a GABC score;
+ * heading = a heading within a section, e.g. "Lectio 1" at Matins.
+ */
+export type LineKind =
+  | 'antiphon'
+  | 'versicle'
+  | 'response'
+  | 'verse'
+  | 'rubric'
+  | 'text'
+  | 'break'
+  | 'chant'
+  | 'heading';
 
 /** A chant score in GABC, as shipped by Divinum Officium (mostly from GregoBase). */
 export interface Chant {
@@ -96,11 +109,13 @@ export interface Hour {
   cantus?: Section[];
 }
 
-export interface Day {
+/** public/data/YYYY/MM-DD/<hour>.json: one hour of one day. */
+export interface HourFile {
   date: string; // YYYY-MM-DD
   rubrics: '1960';
+  /** The day's celebration (the one Lauds is said of). */
   celebration: Headline;
-  hours: Partial<Record<HourId, Hour>>;
+  hour: Hour;
 }
 
 /** public/data/index.json: the range of dates that have been generated. */

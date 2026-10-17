@@ -90,7 +90,10 @@ function toRawLines(html: string): RawRun[][] {
   while ((m = token.exec(html))) {
     const [, closing, rawTag, attrs, text] = m;
     if (text !== undefined) {
-      const t = decodeEntities(text).replace(/\s+/g, ' ');
+      // %...% marks a cross-reference to another hour in DO's chant output; keep the word.
+      const t = decodeEntities(text)
+        .replace(/%([^%]+)%/g, '$1')
+        .replace(/\s+/g, ' ');
       if (t) line.push({ text: t, style: styleOf(stack) });
       continue;
     }
@@ -136,6 +139,11 @@ const LABEL_KIND: Record<string, Line['kind']> = {
 };
 
 function classify(raw: RawRun[]): Line {
+  // A line that is only big red words is a heading within the section ("Lectio 1").
+  const words = raw.filter((r) => r.text.trim());
+  if (words.length && words.every((r) => r.style === 'big') && words.map((r) => r.text).join('').trim().length > 1) {
+    return { kind: 'heading', runs: [{ text: words.map((r) => r.text).join('').trim() }] };
+  }
   // Drop-capitals: a big red letter at the start of a word.
   let runs: Run[] = raw.map((r) => (r.style === 'big' ? { text: r.text, style: 'initial' } : (r as Run)));
   runs = tidy(runs);

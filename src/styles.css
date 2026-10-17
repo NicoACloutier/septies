@@ -242,6 +242,15 @@ header {
   height: 0.6rem;
 }
 
+/* A heading within a part, such as each lesson at Matins. */
+.line.heading {
+  margin: 0.9rem 0 0.3rem;
+  text-align: center;
+  color: var(--rubric);
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+}
+
 /* Chant scores (SVG from Exsurge). Reserve some height so the page doesn't jump as they render. */
 .line.chant {
   margin: 0.5rem 0;
@@ -474,5 +483,15 @@ footer {
 @media (max-width: 480px) {
   .hour {
     padding: 0.4rem 0.8rem 0.8rem;
+  }
+
+  /* Eight hours: smaller tabs so they wrap onto fewer rows. */
+  .hour-tabs {
+    gap: 0.3rem;
+  }
+
+  .hour-tabs button {
+    font-size: 0.95rem;
+    padding: 0.15rem 0.5rem;
   }
 }

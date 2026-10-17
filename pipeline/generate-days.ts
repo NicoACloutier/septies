@@ -1,22 +1,29 @@
 // Runs the Divinum Officium engine (1960 rubrics) for a date range and writes
-// normalized day JSON to public/data/YYYY/MM-DD.json, plus public/data/index.json.
+// normalized JSON, one file per hour, to public/data/YYYY/MM-DD/<hour>.json,
+// plus public/data/index.json.
 //
 // Usage: npm run generate -- [--from YYYY-MM-DD] [--days N] [--jobs N]
 // Defaults: from = 7 days ago, days = 30, jobs = number of CPUs.
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { availableParallelism } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import type { DataIndex, Day, HourId } from '../src/types';
+import type { DataIndex, Headline, Hour, HourFile, HourId } from '../src/types';
 import { runHour, type DoHour } from './do-engine';
-import { parseHeadline, parseHour } from './parse-do';
+import { parseHour } from './parse-do';
 
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'data');
 
-/** Hours included in the generated data (phase 1: Vespers and Compline). */
+/** Every hour of the office, in order. */
 const HOURS: [HourId, DoHour][] = [
+  ['matutinum', 'Matutinum'],
+  ['laudes', 'Laudes'],
+  ['prima', 'Prima'],
+  ['tertia', 'Tertia'],
+  ['sexta', 'Sexta'],
+  ['nona', 'Nona'],
   ['vesperae', 'Vespera'],
   ['completorium', 'Completorium'],
 ];
@@ -31,27 +38,40 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+interface Day {
+  date: string;
+  celebration: Headline;
+  hours: [HourId, Hour][];
+}
+
 async function buildDay(date: string): Promise<Day> {
+  // Each hour as text and as chant.
+  const runs = await Promise.all(
+    HOURS.flatMap(([, doHour]) => [runHour(date, doHour), runHour(date, doHour, true)]),
+  );
+  const hours = HOURS.map(([id], i): [HourId, Hour] => {
+    const hour = parseHour(runs[2 * i]);
+    hour.cantus = parseHour(runs[2 * i + 1]).sections;
+    return [id, hour];
+  });
   // The day's own celebration is the one Lauds is said of; Vespers may already
   // belong to the following day.
-  const [laudes, ...hours] = await Promise.all([
-    runHour(date, 'Laudes'),
-    ...HOURS.flatMap(([, doHour]) => [runHour(date, doHour), runHour(date, doHour, true)]),
-  ]);
-  const day: Day = { date, rubrics: '1960', celebration: parseHeadline(laudes), hours: {} };
-  HOURS.forEach(([id], i) => {
-    const hour = parseHour(hours[2 * i]);
-    hour.cantus = parseHour(hours[2 * i + 1]).sections;
-    day.hours[id] = hour;
-  });
-  return day;
+  const celebration = hours.find(([id]) => id === 'laudes')![1].headline;
+  return { date, celebration, hours };
 }
 
 async function writeDay(day: Day): Promise<void> {
   const [y, m, d] = day.date.split('-');
-  const dir = join(OUT_DIR, y);
+  const dir = join(OUT_DIR, y, `${m}-${d}`);
   await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, `${m}-${d}.json`), JSON.stringify(day));
+  // The older single-file layout (YYYY/MM-DD.json), if left from an earlier run.
+  await rm(join(OUT_DIR, y, `${m}-${d}.json`), { force: true });
+  await Promise.all(
+    day.hours.map(([id, hour]) => {
+      const file: HourFile = { date: day.date, rubrics: '1960', celebration: day.celebration, hour };
+      return writeFile(join(dir, `${id}.json`), JSON.stringify(file));
+    }),
+  );
 }
 
 async function main(): Promise<void> {
@@ -80,8 +100,8 @@ async function main(): Promise<void> {
       process.stdout.write(`\r${done}/${dates.length} ${date}`);
     }
   };
-  // Each day already runs Lauds plus a text and a chant run per hour in parallel, so divide the job budget.
-  const perDay = 2 * HOURS.length + 1;
+  // Each day already runs a text and a chant run per hour in parallel, so divide the job budget.
+  const perDay = 2 * HOURS.length;
   await Promise.all(Array.from({ length: Math.max(1, Math.floor(jobs / perDay)) }, worker));
   process.stdout.write('\n');
 

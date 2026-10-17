@@ -3,7 +3,7 @@ import '@fontsource/fondamento/400.css';
 import '@fontsource/fondamento/400-italic.css';
 import '@fontsource/unifrakturmaguntia/400.css';
 import './styles.css';
-import { loadDay, loadIndex } from './app/data';
+import { loadHour, loadIndex } from './app/data';
 import { addDays, isIsoDate, todayIso } from './app/date';
 import { renderNav, type NavState } from './app/nav';
 import { initTransport } from './app/transport';
@@ -37,11 +37,23 @@ const office = document.getElementById('office')!;
 const transport = document.getElementById('transport')!;
 initTransport(transport, () => [...office.querySelectorAll<HTMLElement>('.chant-score')]);
 
-/** Hours present in the generated data (phase 1: Vespers and Compline). */
-const AVAILABLE: HourId[] = ['vesperae', 'completorium'];
+/** Hours present in the generated data. */
+const AVAILABLE: HourId[] = HOURS;
 
+/**
+ * The hour for the time of day, by the traditional horarium: Matins in the night,
+ * Lauds at dawn, then Prime, Terce, Sext and None, Vespers in the evening, Compline at bedtime.
+ */
 function defaultHour(): HourId {
-  return new Date().getHours() >= 20 ? 'completorium' : 'vesperae';
+  const h = new Date().getHours();
+  if (h < 5) return 'matutinum';
+  if (h < 7) return 'laudes';
+  if (h < 9) return 'prima';
+  if (h < 12) return 'tertia';
+  if (h < 15) return 'sexta';
+  if (h < 17) return 'nona';
+  if (h < 20) return 'vesperae';
+  return 'completorium';
 }
 
 /** State lives in the URL hash, e.g. #2026-10-17/vesperae. */
@@ -67,23 +79,22 @@ async function render(): Promise<void> {
   const index = await indexPromise;
   renderNav(nav, { state, index, hours: AVAILABLE, onChange: writeState, view, onViewChange: setView });
 
-  const day = await loadDay(state.date);
+  const file = await loadHour(state.date, state.hour);
   if (id !== renderId) return; // a newer navigation started meanwhile
-  if (!day) {
+  if (!file) {
     celebration.replaceChildren();
     const range = index ? ` Available: ${index.from} to ${index.to}.` : '';
     renderMessage(office, `No office has been generated for ${state.date}.${range}`);
+    transport.hidden = true;
     return;
   }
-  celebration.replaceChildren(renderHeadline(day.celebration));
-  const hour = day.hours[state.hour];
-  if (hour) renderHour(office, hour, day.celebration, view);
-  else renderMessage(office, 'This hour is not available for this day.');
+  celebration.replaceChildren(renderHeadline(file.celebration));
+  renderHour(office, file.hour, file.celebration, view);
   transport.hidden = !office.querySelector('.chant-score');
 
-  // Warm the cache for the neighbouring days.
-  void loadDay(addDays(state.date, -1));
-  void loadDay(addDays(state.date, 1));
+  // Warm the cache for the same hour on the neighbouring days.
+  void loadHour(addDays(state.date, -1), state.hour);
+  void loadHour(addDays(state.date, 1), state.hour);
 }
 
 window.addEventListener('hashchange', () => void render());
