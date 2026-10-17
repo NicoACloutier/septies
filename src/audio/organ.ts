@@ -107,14 +107,14 @@ export class Organ {
       const n = notes[i];
       const prev = notes[i - 1];
       if (n.midi === prev.midi) {
-        // Same pitch again: a shallow, rounded dip marks the syllable without an attack.
-        env.gain.setTargetAtTime(n.level * 0.65, n.start - 0.09, 0.035);
-        env.gain.setTargetAtTime(n.level, n.start - 0.01, 0.06);
+        // Same pitch again: a rounded dip marks the syllable without an attack.
+        env.gain.setTargetAtTime(n.level * 0.52, n.start - 0.08, 0.028);
+        env.gain.setTargetAtTime(n.level, n.start - 0.005, 0.045);
       } else {
         // New pitch: a gentle portamento that begins just before the note, legato.
         const f = midiToFreq(n.midi);
-        for (const [osc, octave] of ranks) osc.frequency.setTargetAtTime(f * octave, n.start - 0.045, 0.03);
-        env.gain.setTargetAtTime(n.level, n.start - 0.03, 0.09);
+        for (const [osc, octave] of ranks) osc.frequency.setTargetAtTime(f * octave, n.start - 0.028, 0.021);
+        env.gain.setTargetAtTime(n.level, n.start - 0.015, 0.07);
       }
     }
 

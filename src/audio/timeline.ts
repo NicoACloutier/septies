@@ -40,12 +40,12 @@ const PUNCTUATION: [RegExp, number][] = [
 ];
 
 /** Stressed syllables are held this much longer than the pulse. */
-const STRESS = 1.125;
+const STRESS = 1.1;
 
 /** Runs of more than this many notes on one pitch (recitation) are taken faster… */
 const RECITATION_RUN = 4;
 /** …at this fraction of their normal duration. */
-const RECITATION = 0.8;
+const RECITATION = 0.9;
 
 /** The stop after a syllable ending in punctuation, or 0. */
 function punctuationStop(notation: any): number {
