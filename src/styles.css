@@ -12,24 +12,23 @@
 
 * {
   box-sizing: border-box;
+  ::-webkit-scrollbar { display: none; }
+  scrollbar-width: none
 }
 
 body {
   margin: 0;
   color: var(--fg);
-  font-family: 'Fondamento', 'EB Garamond', Georgia, serif;
+  font-family: 'Fondamento', Georgia, serif;
   /* Keep the source spelling (no u→v) if a fallback font has Latin localized forms. */
   font-feature-settings: 'locl' 0;
   font-size: 1.12rem;
   line-height: 1.6;
-  /* Ink spreading slightly into the paper. */
-  text-shadow: 0 0 0.6px rgba(43, 29, 14, 0.45);
-  background-color: var(--bg);
-  background-image:
-    /* fine grain */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.24 0 0 0 0 0.1 0.45 0 0 0 -0.12'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E"),
-    /* broad mottling and stains */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.38 0 0 0 0 0.15 0.7 0 0 0 -0.28'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23m)'/%3E%3C/svg%3E");
+  /* A little extra ink weight so Fondamento's hairline accents survive on 1x screens
+     (much cheaper to paint than a blurred text-shadow). */
+  -webkit-text-stroke: 0.25px currentColor;
+  /* Pre-rendered, seamlessly tiling paper: fine grain over broad stains (scaled up 4x). */
+  background: url('./assets/paper-grain.webp'), url('./assets/paper-mottle.webp') 0 0 / 1024px var(--bg);
 }
 
 /* Darkened, foxed edges of the page. */
@@ -111,7 +110,6 @@ header {
   font-size: 1.7rem;
   font-weight: 400;
   text-align: center;
-  text-shadow: none;
 }
 
 .today-row {
@@ -180,13 +178,16 @@ header {
 .hour-title::after {
   content: '❦';
   display: block;
-  font-family: 'EB Garamond', serif;
+  font-family: Georgia, serif;
   font-size: 1.2rem;
   line-height: 1.2;
 }
 
 .part {
   margin: 1.4rem 0;
+  /* Skip layout and paint for parts far off screen; the browser remembers their real size once seen. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 12rem;
 }
 
 .part-heading {

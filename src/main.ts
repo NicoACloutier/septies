@@ -1,3 +1,8 @@
+// Self-hosted fonts and styles, bundled and hashed by Vite.
+import '@fontsource/fondamento/400.css';
+import '@fontsource/fondamento/400-italic.css';
+import '@fontsource/unifrakturmaguntia/400.css';
+import './styles.css';
 import { loadDay, loadIndex } from './app/data';
 import { addDays, isIsoDate, todayIso } from './app/date';
 import { renderNav, type NavState } from './app/nav';
