@@ -229,14 +229,19 @@ export function resume(): void {
 export function stop(): void {
   run++;
   if (bus) {
-    // Fade rather than cut, to avoid a click.
     const b = bus;
-    const now = organ!.ctx.currentTime;
-    b.gain.setTargetAtTime(0, now, 0.05);
-    setTimeout(() => b.disconnect(), 400);
     bus = null;
+    if (organ!.ctx.state === 'suspended') {
+      // Paused: the frozen sound is cut silently and the reverb emptied, and the
+      // context stays suspended until the next play, so nothing of it is heard.
+      b.disconnect();
+      organ!.flush();
+    } else {
+      // Fade rather than cut, to avoid a click.
+      b.gain.setTargetAtTime(0, organ!.ctx.currentTime, 0.05);
+      setTimeout(() => b.disconnect(), 400);
+    }
   }
-  if (organ?.ctx.state === 'suspended') void organ.ctx.resume();
   continueAfterText?.(); // release a wait at a text section; its run is cancelled
   clearHighlight();
   current = null;

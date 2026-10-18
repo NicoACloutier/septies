@@ -21,8 +21,10 @@ const midiToFreq = (midi: number) => 440 * 2 ** ((midi - 69) / 12);
 
 export class Organ {
   readonly ctx: AudioContext;
-  private input: GainNode;
+  private input!: GainNode;
+  private output!: AudioNode;
   private wave: PeriodicWave;
+  private room: AudioBuffer;
 
   constructor() {
     this.ctx = new AudioContext({ latencyHint: 'playback' });
@@ -31,7 +33,23 @@ export class Organ {
     // Fourier series of the principal stop: fundamental plus decaying upper partials.
     const real = new Float32Array([0, 1, 0.5, 0.28, 0.2, 0.07, 0.09, 0.03, 0.05]);
     this.wave = ctx.createPeriodicWave(real, new Float32Array(real.length));
+    this.room = this.impulse(3.8, 3);
+    this.buildChain();
+  }
 
+  /**
+   * Discards all sound in the effects (the reverb's tail included) by replacing
+   * them. Used when stopping while paused: the suspended context still holds the
+   * sound of that moment, which would otherwise play out once it runs again.
+   */
+  flush(): void {
+    this.output.disconnect();
+    this.buildChain();
+  }
+
+  /** Tone filter, dry and reverberated paths, master volume and limiter. */
+  private buildChain(): void {
+    const ctx = this.ctx;
     this.input = ctx.createGain();
     const tone = ctx.createBiquadFilter();
     tone.type = 'lowpass';
@@ -42,7 +60,7 @@ export class Organ {
     const wet = ctx.createGain();
     wet.gain.value = 0.55;
     const reverb = ctx.createConvolver();
-    reverb.buffer = this.impulse(3.8, 3);
+    reverb.buffer = this.room;
 
     const master = ctx.createGain();
     master.gain.value = 0.22;
@@ -54,6 +72,7 @@ export class Organ {
     tone.connect(dry).connect(master);
     tone.connect(reverb).connect(wet).connect(master);
     master.connect(limiter).connect(ctx.destination);
+    this.output = limiter;
   }
 
   /** A fresh bus for one run of playback, so it can be faded out at once. */
