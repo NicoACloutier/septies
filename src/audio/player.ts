@@ -30,6 +30,53 @@ let position: { el: HTMLElement; notes: TimedNote[]; origin: number } | null = n
 /** Tempo or pitch changed while paused: reschedule on resume. */
 let changedWhilePaused = false;
 
+/**
+ * iOS treats Web Audio as "ambient" sound, which the ring/silent switch mutes, so
+ * on a silenced iPhone nothing is heard. Declaring media playback lifts that:
+ * navigator.audioSession where Safari has it (17+), and otherwise a looping silent
+ * <audio> element, which puts the page in the playback audio category. Must be
+ * called from the tap that starts playback.
+ */
+let silence: HTMLAudioElement | null = null;
+function claimMediaPlayback(): void {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (session) {
+    try {
+      session.type = 'playback';
+    } catch {
+      // Not settable here; the silent element below still applies.
+    }
+  }
+  silence ??= Object.assign(new Audio(silentWav()), { loop: true, preload: 'auto' });
+  silence.setAttribute('playsinline', '');
+  void silence.play().catch(() => {});
+}
+
+function releaseMediaPlayback(): void {
+  silence?.pause();
+}
+
+/** Half a second of 8-bit, 8 kHz mono silence, as a WAV blob URL. */
+function silentWav(): string {
+  const samples = 4000;
+  const view = new DataView(new ArrayBuffer(44 + samples));
+  const text = (at: number, s: string) => [...s].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + samples, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, 1, true); // mono
+  view.setUint32(24, 8000, true); // sample rate
+  view.setUint32(28, 8000, true); // byte rate
+  view.setUint16(32, 1, true); // block align
+  view.setUint16(34, 8, true); // bits per sample
+  text(36, 'data');
+  view.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i++) view.setUint8(44 + i, 128); // 8-bit silence is the midpoint
+  return URL.createObjectURL(new Blob([view.buffer], { type: 'audio/wav' }));
+}
+
 function emit(): void {
   for (const l of listeners) l(state, current);
 }
@@ -164,6 +211,7 @@ export async function playFrom(scores: HTMLElement[], index: number, from = 0): 
   // Claim this run and its bus before any await, so a second click that arrives
   // meanwhile cancels this one (and fades its bus) instead of overlapping it.
   const token = ++run;
+  claimMediaPlayback();
   organ ??= new Organ();
   const runBus = organ.createBus();
   bus = runBus;
@@ -206,6 +254,7 @@ function waitForReader(next: HTMLElement): Promise<void> {
 export function pause(): void {
   if (state !== 'playing' || !organ) return;
   void organ.ctx.suspend();
+  releaseMediaPlayback();
   state = 'paused';
   emit();
 }
@@ -213,6 +262,7 @@ export function pause(): void {
 /** Continues after a pause, or after a text section (with the chant that follows it). */
 export function resume(): void {
   if (!organ) return;
+  claimMediaPlayback();
   if (state === 'waiting') {
     state = 'playing';
     emit();
@@ -228,6 +278,7 @@ export function resume(): void {
 
 export function stop(): void {
   run++;
+  releaseMediaPlayback();
   if (bus) {
     const b = bus;
     bus = null;

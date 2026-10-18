@@ -2,6 +2,7 @@
 // chant scores, and the celebration line.
 
 import { currentScore, onPlayerChange, pause, playerState, playFrom, resume } from '../audio/player';
+import { icon } from '../app/icons';
 import { chantElement } from '../chant/render';
 import type { Headline, Hour, Line, Run, Section } from '../types';
 
@@ -37,13 +38,13 @@ function splitAtMediant(runs: Run[]): [Run[], Run[]] | null {
 
 function setPlayButton(button: HTMLElement, current: boolean, playing: boolean): void {
   const label = playing ? 'Intermitte' : current ? 'Perge' : 'Cane hinc';
-  button.textContent = playing ? '❚❚' : '▶';
+  button.replaceChildren(icon(playing ? 'pause' : 'play'));
   button.title = label;
   button.setAttribute('aria-label', label);
   button.classList.toggle('active', current);
 }
 
-// Each chant's button shows ❚❚ while that chant sounds and ▶ otherwise.
+// Each chant's button shows a pause sign while that chant sounds and a play sign otherwise.
 onPlayerChange((state, current) => {
   for (const button of document.querySelectorAll<HTMLElement>('.chant-play')) {
     const isCurrent = !!current && button.closest('.line.chant')?.querySelector('.chant-score') === current;

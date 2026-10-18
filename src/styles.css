@@ -276,6 +276,23 @@ header {
   border-color: var(--border);
 }
 
+/* Playback signs (src/app/icons.ts), sized to the text. */
+.icon {
+  width: 0.8em;
+  height: 0.8em;
+  vertical-align: -0.06em;
+}
+
+.chant-play .icon {
+  width: 0.7rem;
+  height: 0.7rem;
+  vertical-align: middle;
+}
+
+#transport .icon {
+  color: var(--rubric);
+}
+
 .chant-play.active {
   background: var(--rubric);
   border-color: var(--rubric);

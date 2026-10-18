@@ -11,11 +11,13 @@ import {
   TRANSPOSE,
   type PlaybackSettings,
 } from '../audio/settings';
+import { icon, type IconName } from './icons';
 
-function button(label: string, title: string, onClick: () => void): HTMLButtonElement {
+function button(label: string, title: string, onClick: () => void, sign?: IconName): HTMLButtonElement {
   const b = document.createElement('button');
   b.type = 'button';
-  b.textContent = label;
+  if (sign) b.append(icon(sign), ' ');
+  b.append(label);
   b.title = title;
   b.addEventListener('click', onClick);
   return b;
@@ -116,13 +118,13 @@ export function initTransport(el: HTMLElement, scores: () => HTMLElement[]): voi
       buttons.push(hint);
     }
     if (state === 'stopped') {
-      buttons.push(button('▶ Cane horam', 'Totam horam cane', () => void playFrom(scores(), 0)));
+      buttons.push(button('Cane horam', 'Totam horam cane', () => void playFrom(scores(), 0), 'play'));
     } else {
       buttons.push(
         state === 'playing'
-          ? button('❚❚ Intermitte', 'Intermitte', pause)
-          : button('▶ Perge', 'Perge', resume),
-        button('■ Siste', 'Siste', stop),
+          ? button('Intermitte', 'Intermitte', pause, 'pause')
+          : button('Perge', 'Perge', resume, 'play'),
+        button('Siste', 'Siste', stop, 'stop'),
       );
     }
     controls.replaceChildren(...buttons);
